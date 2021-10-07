@@ -94,6 +94,7 @@ class Spy(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
+        return True
         if self.R == 5:
             return True
         elif self.id in mission:

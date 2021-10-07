@@ -66,6 +66,9 @@ class Resistance(Agent):
         self.spies = spies
         self.N = number_of_players
 
+        self.player_sus = [self.nSpy / (self.N - 1) for _ in range(number_of_players)]
+        self.player_sus[self.id] = 0
+
         self.M = 1
         self.R = 1
 
@@ -83,7 +86,7 @@ class Resistance(Agent):
         team.append(self.id)
         while len(team) < team_size:
             i = random.randrange(0, self.N)
-            if not i in self.spies:
+            if not i in self.spies and i not in team:
                 team.append(i)
         return team
 
@@ -94,6 +97,7 @@ class Resistance(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
+        return True
         if self.R == 5:
             return True
         elif self.id in mission:
@@ -122,6 +126,71 @@ class Resistance(Agent):
         '''
         return False
 
+    def update_information(self, mission, num_fails):
+        '''
+        Apply Bayes' Rule to update the probability of each member of being a spy
+        P(A|B) = P(B|A) * P(A) / P(B)
+        P(A is a spy | n fails) = P(n fails | A is a spy) * P(A is a spy) / P(n fails)
+        '''
+        # if not self.id == 0:
+        #     return
+        total_permutations = 2**len(mission) # each player has 2 choices, succeed or fail
+        prev = self.player_sus.copy()
+        FAIL_RATE = (3 - self.failure) / (5 - self.M + 1) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
+        if FAIL_RATE < 0.001:
+            FAIL_RATE = 1
+        
+
+        valid_permutations = []
+        for p in range(total_permutations):
+            pb = "{0:b}".format(p).zfill(len(mission))
+            if pb.count('1') == num_fails:
+                valid_permutations.append(pb)
+
+        pB = 0
+        for p in valid_permutations:
+            probability = 1
+            for i in range(len(p)):
+
+                if p[i] == '1': # fail
+                    # probability of being a spy and failing
+                    probability *= (prev[mission[i]] * FAIL_RATE)      
+                else:       # p[i] = 0 -> succeed
+                    # probability succeeding as a spy and probability of being a res
+                    probability *= (prev[mission[i]] * (1 - FAIL_RATE) + (1 - prev[mission[i]])) 
+            
+            pB += probability
+        # print('=====================')
+        # print(mission, num_fails, FAIL_RATE, self.player_sus)
+        # print(pB)
+        # print(valid_permutations)
+        # input('=====================')
+
+        for m in range(len(mission)):
+            pBA = 0
+            for p in valid_permutations:
+                probability = 1
+                for i in range(len(p)):
+                    if i == m:
+                        if p[i] == '1':
+                            probability *= FAIL_RATE
+                        else:
+                            probability *= (1 - FAIL_RATE)
+                    else:
+                        if p[i] == '1':
+                            probability *= (prev[mission[i]] * FAIL_RATE)
+                        else:
+                            probability *= (prev[mission[i]] * (1 - FAIL_RATE) +  (1 - prev[mission[i]]))
+                pBA += probability
+            
+            pA = prev[mission[m]]
+
+            pAB = (pBA * pA) / pB
+            self.player_sus[mission[m]] = pAB
+
+        # print(self.player_sus)
+        # x = input("----------------------")
+        
     def mission_outcome(self, mission, proposer, num_fails, mission_success):
         '''
         mission is a list of agents to be sent on a mission. 
@@ -131,11 +200,12 @@ class Resistance(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
+        self.update_information(mission, num_fails)
+
         self.M += 1
         self.R = 1
         self.success += mission_success
         self.failure += 1 - mission_success
-        pass
 
     def round_outcome(self, rounds_complete, missions_failed):
         '''
@@ -151,6 +221,8 @@ class Resistance(Agent):
         spies_win, True iff the spies caused 3+ missions to fail
         spies, a list of the player indexes for the spies.
         '''
-        pass
+        if self.id == 0:
+            print(self.player_sus)
+            input("------GAME FINISHED------")
 
 

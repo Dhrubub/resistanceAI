@@ -58,7 +58,7 @@ class Game:
                 a.round_outcome(i+1, self.missions_lost)
             leader_id = (leader_id+len(self.rounds[i].missions)) % len(self.agents)    
         for a in self.agents:
-            a.game_outcome(self.missions_lost<3, self.spies)
+            a.game_outcome(not self.missions_lost<3, self.spies)
 
     def __str__(self):
         isTestSpy = False

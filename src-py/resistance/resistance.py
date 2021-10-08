@@ -65,6 +65,7 @@ class Resistance(Agent):
         self.id = player_number
         self.spies = spies
         self.N = number_of_players
+        self.nRes = self.N - self.nSpy
 
         self.player_sus = [self.nSpy / (self.N - 1) for _ in range(number_of_players)]
         self.player_sus[self.id] = 0
@@ -77,7 +78,6 @@ class Resistance(Agent):
 
         self.spy = self.id in self.spies
 
-        # print(self.spy)
 
 
     def propose_mission(self, team_size, fails_required = 1):
@@ -86,22 +86,34 @@ class Resistance(Agent):
         to be returned. 
         fails_required are the number of fails required for the mission to fail.
         '''
-        if self.spy:
-            team = []
-            team.append(self.id)
-            while len(team) < team_size:
-                i = random.randrange(0, self.N)
-                if not i in self.spies:
-                    team.append(i)
-            return team
-        else:
-            team = []
-            team.append(self.id)
-            while len(team) < team_size:
-                i = random.randrange(0, self.N)
-                if not i in self.spies and i not in team:
-                    team.append(i)
-            return team
+        spies_guess = sorted(range(len(self.player_sus)), key=lambda k: self.player_sus[k])
+        # if self.spy:
+        #     team = []
+        #     team.append(self.id)
+        #     while len(team) < team_size:
+        #         i = random.randrange(0, self.N)
+        #         # if not i in self.spies:
+        #         team.append(i)
+        #     return team
+        # else:
+        # team = []
+        # team.append(self.id)
+        # while len(team) < team_size:
+        #     i = random.randrange(0, self.N)
+        #     if i not in team:
+        #         team.append(i)
+        # return team
+
+        return spies_guess[:team_size]
+
+        # team = []
+        # while len(team)<team_size:
+        #     agent = random.randrange(team_size)
+        #     if agent not in team:
+        #         team.append(agent)
+        # return team  
+
+
 
     def vote(self, mission, proposer):
         '''
@@ -110,13 +122,19 @@ class Resistance(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
-        return True
         if self.R == 4:
             return True
-        elif self.id in mission:
-            return True
         else:
-            return False
+            spies_guess = sorted(range(len(self.player_sus)), key=lambda k: self.player_sus[k])[-self.nSpy:]
+            nSpies = 0
+            for m in mission:
+                if m in spies_guess:
+                    nSpies += 1
+
+            if nSpies >= self.nFails[self.M]:
+                return False       
+        return True
+
 
     def vote_outcome(self, mission, proposer, votes):
         '''
@@ -152,9 +170,9 @@ class Resistance(Agent):
         #     return
         total_permutations = 2**len(mission) # each player has 2 choices, succeed or fail
         prev = self.player_sus.copy()
-        FAIL_RATE = (3 - self.failure) / (5 - self.M) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
-        if FAIL_RATE < 0.001:
-            FAIL_RATE = 1
+        failRate = (3 - self.failure) / (5 - self.M) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
+        if failRate < 0.001:
+            failRate = 1
         
 
         valid_permutations = []
@@ -170,17 +188,17 @@ class Resistance(Agent):
 
                 if p[i] == '1': # fail
                     # probability of being a spy and failing
-                    probability *= (prev[mission[i]] * FAIL_RATE)      
+                    probability *= (prev[mission[i]] * failRate)      
                 else:       # p[i] = 0 -> succeed
                     # probability succeeding as a spy and probability of being a res
-                    probability *= (prev[mission[i]] * (1 - FAIL_RATE) + (1 - prev[mission[i]])) 
+                    probability *= (prev[mission[i]] * (1 - failRate) + (1 - prev[mission[i]])) 
             
             pB += probability
         
         if pB < 0.001:
             pB = 1
         # print('=====================')
-        # print(mission, num_fails, FAIL_RATE, self.player_sus)
+        # print(mission, num_fails, failRate, self.player_sus)
         # print(pB)
         # print(valid_permutations)
         # input('=====================')
@@ -192,14 +210,14 @@ class Resistance(Agent):
                 for i in range(len(p)):
                     if i == m:
                         if p[i] == '1':
-                            probability *= FAIL_RATE
+                            probability *= failRate
                         else:
-                            probability *= (1 - FAIL_RATE)
+                            probability *= (1 - failRate)
                     else:
                         if p[i] == '1':
-                            probability *= (prev[mission[i]] * FAIL_RATE)
+                            probability *= (prev[mission[i]] * failRate)
                         else:
-                            probability *= (prev[mission[i]] * (1 - FAIL_RATE) +  (1 - prev[mission[i]]))
+                            probability *= (prev[mission[i]] * (1 - failRate) +  (1 - prev[mission[i]]))
                 pBA += probability
             
             pA = prev[mission[m]]
@@ -232,6 +250,7 @@ class Resistance(Agent):
         rounds_complete, the number of rounds (0-5) that have been completed
         missions_failed, the numbe of missions (0-3) that have failed.
         '''
+        #print(rounds_complete, missions_failed)
         pass
     
     def game_outcome(self, spies_win, spies):
@@ -243,8 +262,9 @@ class Resistance(Agent):
         # print(self.player_sus, self.id)
         spies_guess = sorted(range(len(self.player_sus)), key=lambda k: self.player_sus[k])[-self.nSpy:]
         if not self.spy:
-            print(sorted(spies) == sorted(spies_guess))
+            pass
+            # print(sorted(spies) == sorted(spies_guess))
+            #print(spies_guess, spies)
         #input("------GAME FINISHED------")
-        pass            
 
 

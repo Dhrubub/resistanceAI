@@ -69,11 +69,15 @@ class Resistance(Agent):
         self.player_sus = [self.nSpy / (self.N - 1) for _ in range(number_of_players)]
         self.player_sus[self.id] = 0
 
-        self.M = 1
-        self.R = 1
+        self.M = 0
+        self.R = 0
 
         self.success = 0
         self.failure = 0
+
+        self.spy = self.id in self.spies
+
+        # print(self.spy)
 
 
     def propose_mission(self, team_size, fails_required = 1):
@@ -82,13 +86,22 @@ class Resistance(Agent):
         to be returned. 
         fails_required are the number of fails required for the mission to fail.
         '''
-        team = []
-        team.append(self.id)
-        while len(team) < team_size:
-            i = random.randrange(0, self.N)
-            if not i in self.spies and i not in team:
-                team.append(i)
-        return team
+        if self.spy:
+            team = []
+            team.append(self.id)
+            while len(team) < team_size:
+                i = random.randrange(0, self.N)
+                if not i in self.spies:
+                    team.append(i)
+            return team
+        else:
+            team = []
+            team.append(self.id)
+            while len(team) < team_size:
+                i = random.randrange(0, self.N)
+                if not i in self.spies and i not in team:
+                    team.append(i)
+            return team
 
     def vote(self, mission, proposer):
         '''
@@ -98,7 +111,7 @@ class Resistance(Agent):
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
         return True
-        if self.R == 5:
+        if self.R == 4:
             return True
         elif self.id in mission:
             return True
@@ -124,7 +137,10 @@ class Resistance(Agent):
         The method should return True if this agent chooses to betray the mission, and False otherwise. 
         Only spies are permitted to betray the mission. 
         '''
-        return False
+        if self.spy:
+            return True
+        else:
+            return False
 
     def update_information(self, mission, num_fails):
         '''
@@ -136,7 +152,7 @@ class Resistance(Agent):
         #     return
         total_permutations = 2**len(mission) # each player has 2 choices, succeed or fail
         prev = self.player_sus.copy()
-        FAIL_RATE = (3 - self.failure) / (5 - self.M + 1) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
+        FAIL_RATE = (3 - self.failure) / (5 - self.M) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
         if FAIL_RATE < 0.001:
             FAIL_RATE = 1
         
@@ -160,6 +176,9 @@ class Resistance(Agent):
                     probability *= (prev[mission[i]] * (1 - FAIL_RATE) + (1 - prev[mission[i]])) 
             
             pB += probability
+        
+        if pB < 0.001:
+            pB = 1
         # print('=====================')
         # print(mission, num_fails, FAIL_RATE, self.player_sus)
         # print(pB)
@@ -203,7 +222,7 @@ class Resistance(Agent):
         self.update_information(mission, num_fails)
 
         self.M += 1
-        self.R = 1
+        self.R = 0
         self.success += mission_success
         self.failure += 1 - mission_success
 
@@ -221,8 +240,11 @@ class Resistance(Agent):
         spies_win, True iff the spies caused 3+ missions to fail
         spies, a list of the player indexes for the spies.
         '''
-        if self.id == 0:
-            print(self.player_sus)
-            input("------GAME FINISHED------")
+        # print(self.player_sus, self.id)
+        spies_guess = sorted(range(len(self.player_sus)), key=lambda k: self.player_sus[k])[-self.nSpy:]
+        if not self.spy:
+            print(sorted(spies) == sorted(spies_guess))
+        #input("------GAME FINISHED------")
+        pass            
 
 

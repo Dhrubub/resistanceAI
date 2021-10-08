@@ -4,8 +4,8 @@ from spy import Spy
 
 from game import Game
 
-agents = [Spy(name='s1'), 
-        Spy(name='s2'),  
+agents = [Resistance(name='s1'), 
+        Resistance(name='s2'),  
         Resistance(name='r1'),  
         Resistance(name='r2'),  
         Resistance(name='r3'),  
@@ -20,7 +20,7 @@ for j in range(b):
                 game.play()
                 if str(game)[:3] == "won":
                         a+=1
-                print(game)
+                # print(game)
         c += a
 
 c = c / b

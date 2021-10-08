@@ -66,11 +66,17 @@ class Spy(Agent):
         self.spies = spies
         self.N = number_of_players
 
-        self.M = 1
-        self.R = 1
+        self.player_sus = [self.nSpy / (self.N - 1) for _ in range(number_of_players)]
+        self.player_sus[self.id] = 0
+
+        self.M = 0
+        self.R = 0
 
         self.success = 0
         self.failure = 0
+
+        self.spy = self.id in self.spies
+
 
 
     def propose_mission(self, team_size, fails_required = 1):
@@ -95,7 +101,7 @@ class Spy(Agent):
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
         return True
-        if self.R == 5:
+        if self.R == 4:
             return True
         elif self.id in mission:
             return True
@@ -121,12 +127,76 @@ class Spy(Agent):
         The method should return True if this agent chooses to betray the mission, and False otherwise. 
         Only spies are permitted to betray the mission. 
         '''
+        return True
 
-        if (self.success == 2):
-            return True
+    def update_information(self, mission, num_fails):
+        '''
+        Apply Bayes' Rule to update the probability of each member of being a spy
+        P(A|B) = P(B|A) * P(A) / P(B)
+        P(A is a spy | n fails) = P(n fails | A is a spy) * P(A is a spy) / P(n fails)
+        '''
+        # if not self.id == 0:
+        #     return
+        total_permutations = 2**len(mission) # each player has 2 choices, succeed or fail
+        prev = self.player_sus.copy()
+        FAIL_RATE = (3 - self.failure) / (5 - self.M) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
+        if FAIL_RATE < 0.001:
+            FAIL_RATE = 1
+        
 
-        return random.random() < 1
+        valid_permutations = []
+        for p in range(total_permutations):
+            pb = "{0:b}".format(p).zfill(len(mission))
+            if pb.count('1') == num_fails:
+                valid_permutations.append(pb)
 
+        pB = 0
+        for p in valid_permutations:
+            probability = 1
+            for i in range(len(p)):
+
+                if p[i] == '1': # fail
+                    # probability of being a spy and failing
+                    probability *= (prev[mission[i]] * FAIL_RATE)      
+                else:       # p[i] = 0 -> succeed
+                    # probability succeeding as a spy and probability of being a res
+                    probability *= (prev[mission[i]] * (1 - FAIL_RATE) + (1 - prev[mission[i]])) 
+            
+            pB += probability
+        
+        if pB < 0.001:
+            pB = 1
+        # print('=====================')
+        # print(mission, num_fails, FAIL_RATE, self.player_sus)
+        # print(pB)
+        # print(valid_permutations)
+        # input('=====================')
+
+        for m in range(len(mission)):
+            pBA = 0
+            for p in valid_permutations:
+                probability = 1
+                for i in range(len(p)):
+                    if i == m:
+                        if p[i] == '1':
+                            probability *= FAIL_RATE
+                        else:
+                            probability *= (1 - FAIL_RATE)
+                    else:
+                        if p[i] == '1':
+                            probability *= (prev[mission[i]] * FAIL_RATE)
+                        else:
+                            probability *= (prev[mission[i]] * (1 - FAIL_RATE) +  (1 - prev[mission[i]]))
+                pBA += probability
+            
+            pA = prev[mission[m]]
+
+            pAB = (pBA * pA) / pB
+            self.player_sus[mission[m]] = pAB
+
+        # print(self.player_sus)
+        # x = input("----------------------")
+        
     def mission_outcome(self, mission, proposer, num_fails, mission_success):
         '''
         mission is a list of agents to be sent on a mission. 
@@ -136,11 +206,12 @@ class Spy(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
+        self.update_information(mission, num_fails)
+
         self.M += 1
-        self.R = 1
+        self.R = 0
         self.success += mission_success
         self.failure += 1 - mission_success
-        pass
 
     def round_outcome(self, rounds_complete, missions_failed):
         '''
@@ -156,6 +227,9 @@ class Spy(Agent):
         spies_win, True iff the spies caused 3+ missions to fail
         spies, a list of the player indexes for the spies.
         '''
-        pass
+        #print(self.player_sus, self.id)
+        print(self.id, self.spy, sorted(range(len(self.player_sus)), key=lambda k: self.player_sus[k])[-2:])
+        #input("------GAME FINISHED------")
+        pass            
 
 

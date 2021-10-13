@@ -11,8 +11,8 @@ class Resistance(Agent):
     #e.g. self.mission_size[8][3] is the number to be sent on the 3rd mission in a game of 8
     mission_sizes = {
             5:[2,3,2,3,3], \
-            6:[3,3,3,3,3], \
-            7:[2,3,3,4,5], \
+            6:[2,3,4,3,4], \
+            7:[2,3,3,4,4], \
             8:[3,4,4,5,5], \
             9:[3,4,4,5,5], \
             10:[3,4,4,5,5]
@@ -77,6 +77,11 @@ class Resistance(Agent):
         self.failure = 0
 
         self.spy = self.id in self.spies
+        self.failRate = 0.75
+        #self.failRate = (3-self.failure) / (5-self.M)
+        #self.failRate = (3-self.failure) / (5-self.M - 1)
+        if self.failRate == 0:
+            self.failRate = 0.5
 
 
 
@@ -156,7 +161,10 @@ class Resistance(Agent):
         Only spies are permitted to betray the mission. 
         '''
         if self.spy:
-            return True
+            failRate = self.failRate
+            if failRate < 0.001:
+                failRate = 1
+            return random.random() < failRate
         else:
             return False
 
@@ -171,6 +179,7 @@ class Resistance(Agent):
         total_permutations = 2**len(mission) # each player has 2 choices, succeed or fail
         prev = self.player_sus.copy()
         failRate = (3 - self.failure) / (5 - self.M) # e.g. for first mission: (3 - 0) / (5 - 1 + 1) = 3/5 = 0.6
+        failRate = self.failRate
         if failRate < 0.001:
             failRate = 1
         
@@ -243,6 +252,14 @@ class Resistance(Agent):
         self.R = 0
         self.success += mission_success
         self.failure += 1 - mission_success
+        
+        self.failRate = 0.75
+        if self.M == 5 or self.M == 4:
+            return
+        #self.failRate = (3-self.failure) / (5-self.M)
+        #self.failRate = (3-self.failure) / (5-self.M - 1)
+        if self.failRate == 0:
+            self.failRate = 0.5
 
     def round_outcome(self, rounds_complete, missions_failed):
         '''
